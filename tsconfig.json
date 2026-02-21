@@ -1,0 +1,8 @@
+{
+	"extends": "@sindresorhus/tsconfig",
+	"compilerOptions": {
+		"outDir": "dist",
+		"types": ["bun-types"]
+	},
+	"include": ["source"]
+}

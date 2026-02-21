@@ -1,0 +1,7 @@
+node_modules
+dist
+.claude
+.codex
+.gemini
+.opencode
+.aider
