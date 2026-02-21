@@ -1,9 +1,10 @@
 import {existsSync, readdirSync, readFileSync, statSync} from 'node:fs';
 import {join, basename} from 'node:path';
-import {homedir} from 'node:os';
-import {type Session, type SessionReader} from './types.js';
+import {type Session, type SessionReader} from '../types.js';
+import {type NormalizedMessage} from '../../writers/types.js';
+import {resolvePath, AGENT_PATHS} from '../../platforms.js';
 
-const SESSIONS_DIR = join(homedir(), '.claude', 'projects');
+const SESSIONS_DIR = resolvePath(AGENT_PATHS.claudeCode.sessionsDir);
 
 type RawEntry = {
 	type: string;
@@ -87,7 +88,52 @@ function parseSessionFile(filePath: string): Session | null {
 		messageCount,
 		lastActive: lastActive ?? new Date(statSync(filePath).mtimeMs),
 		createdAt: createdAt ?? new Date(statSync(filePath).birthtimeMs),
+		sourcePath: filePath,
 	};
+}
+
+export function readMessages(session: Session): NormalizedMessage[] {
+	let raw: string;
+	try {
+		raw = readFileSync(session.sourcePath, 'utf8');
+	} catch {
+		return [];
+	}
+
+	const messages: NormalizedMessage[] = [];
+
+	for (const line of raw.trim().split('\n').filter(Boolean)) {
+		let entry: RawEntry;
+		try {
+			entry = JSON.parse(line) as RawEntry;
+		} catch {
+			continue;
+		}
+
+		if (entry.type !== 'user' && entry.type !== 'assistant') continue;
+		if (!entry.message?.content) continue;
+
+		const content = entry.message.content;
+		let text = '';
+		if (typeof content === 'string') {
+			text = content;
+		} else if (Array.isArray(content)) {
+			text = content
+				.filter(c => c.type === 'text' && c.text)
+				.map(c => c.text!)
+				.join('\n');
+		}
+
+		if (!text.trim()) continue;
+
+		messages.push({
+			role: entry.type === 'user' ? 'user' : 'assistant',
+			content: text,
+			timestamp: entry.timestamp ? new Date(entry.timestamp) : new Date(),
+		});
+	}
+
+	return messages;
 }
 
 export const claudeCodeReader: SessionReader = {

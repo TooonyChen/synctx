@@ -1,7 +1,7 @@
-import {claudeCodeReader} from './claudeCode.js';
-import {codexReader} from './codex.js';
-import {geminiReader} from './gemini.js';
-import {opencodeReader} from './opencode.js';
+import {claudeCodeReader} from './agents/claudeCode.js';
+import {codexReader} from './agents/codex.js';
+import {geminiReader} from './agents/gemini.js';
+import {opencodeReader} from './agents/opencode.js';
 import {type Session, type SessionReader} from './types.js';
 
 export {type Session, type SessionReader} from './types.js';
