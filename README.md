@@ -35,11 +35,12 @@ Download from [GitHub Releases](https://github.com/TooonyChen/synctx/releases):
 
 ```bash
 # Apple Silicon
-curl -fsSL https://github.com/TooonyChen/synctx/releases/latest/download/synctx-macos-arm64.tar.gz | tar xz
+curl -fsSL -o synctx https://github.com/TooonyChen/synctx/releases/latest/download/synctx-macos-arm64
 # Intel Mac
-curl -fsSL https://github.com/TooonyChen/synctx/releases/latest/download/synctx-macos-x64.tar.gz | tar xz
+curl -fsSL -o synctx https://github.com/TooonyChen/synctx/releases/latest/download/synctx-macos-x64
 
-sudo mv synctx-macos-* /usr/local/bin/synctx
+chmod +x synctx
+sudo mv synctx /usr/local/bin/
 ```
 
 ### Build from source
