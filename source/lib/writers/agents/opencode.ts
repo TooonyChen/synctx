@@ -3,6 +3,7 @@ import {basename} from 'node:path';
 import {execSync} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import {Database} from 'bun:sqlite';
+import {getResumeCommand} from '../../resume.js';
 import {
 	type NormalizedSession,
 	type WriteResult,
@@ -337,7 +338,7 @@ export const opencodeWriter: SessionWriter = {
 
 			return {
 				sessionId,
-				resumeCommand: `opencode -s ${sessionId}`,
+				resumeCommand: getResumeCommand('OpenCode', sessionId),
 			};
 		} finally {
 			db.close();

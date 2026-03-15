@@ -3,6 +3,7 @@ import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {type NormalizedSession, type WriteResult, type SessionWriter} from '../types.js';
 import {resolvePath, AGENT_PATHS} from '../../platforms.js';
+import {getResumeCommand} from '../../resume.js';
 
 const SESSIONS_DIR = resolvePath(AGENT_PATHS.claudeCode.sessionsDir);
 
@@ -63,7 +64,7 @@ export const claudeCodeWriter: SessionWriter = {
 
 		return {
 			sessionId,
-			resumeCommand: `claude --resume ${sessionId}`,
+			resumeCommand: getResumeCommand('Claude Code', sessionId),
 		};
 	},
 };

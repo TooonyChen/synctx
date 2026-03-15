@@ -3,6 +3,7 @@ import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {homedir} from 'node:os';
 import {Database} from 'bun:sqlite';
+import {getResumeCommand} from '../../resume.js';
 import {
 	type NormalizedSession,
 	type WriteResult,
@@ -236,7 +237,7 @@ export const codexWriter: SessionWriter = {
 
 		return {
 			sessionId,
-			resumeCommand: `codex resume ${sessionId}`,
+			resumeCommand: getResumeCommand('Codex', sessionId),
 		};
 	},
 };
