@@ -33,13 +33,6 @@ export const AGENT_PATHS = {
 			win32: join(home, 'AppData', 'Roaming', 'Codex', 'sessions'),
 		},
 	},
-	gemini: {
-		tmpDir: {
-			darwin: join(home, '.gemini', 'tmp'),
-			linux: join(home, '.gemini', 'tmp'),
-			win32: join(home, 'AppData', 'Roaming', 'Google', 'gemini', 'tmp'),
-		},
-	},
 	opencode: {
 		dbPath: {
 			darwin: join(home, '.local', 'share', 'opencode', 'opencode.db'),

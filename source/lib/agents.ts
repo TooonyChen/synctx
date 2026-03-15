@@ -32,12 +32,6 @@ const KNOWN_AGENTS: AgentDef[] = [
 		sessionsDir: join(homedir(), '.codex'),
 	},
 	{
-		name: 'Gemini CLI',
-		binary: 'gemini',
-		versionFlag: '--version',
-		sessionsDir: join(homedir(), '.gemini'),
-	},
-	{
 		name: 'OpenCode',
 		binary: 'opencode',
 		versionFlag: '--version',

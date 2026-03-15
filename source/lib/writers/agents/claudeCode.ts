@@ -1,22 +1,60 @@
+import {mkdirSync, writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {randomUUID} from 'node:crypto';
 import {type NormalizedSession, type WriteResult, type SessionWriter} from '../types.js';
+import {resolvePath, AGENT_PATHS} from '../../platforms.js';
 
-// Claude Code session format:
-// ~/.claude/projects/<encoded-path>/<session-id>.jsonl
-// Each line: { uuid, parentUuid, timestamp, sessionId, type, message: { role, content } }
-// Resume with: claude --resume <session-id>
+const SESSIONS_DIR = resolvePath(AGENT_PATHS.claudeCode.sessionsDir);
+
+// "/Users/okcomputer/codebase/synctx" → "-Users-okcomputer-codebase-synctx"
+function encodeProjectPath(projectPath: string): string {
+	return projectPath.replace(/\//g, '-');
+}
 
 export const claudeCodeWriter: SessionWriter = {
 	agentName: 'Claude Code',
 
 	async writeSession(
-		_session: NormalizedSession,
-		_targetProjectPath: string,
+		session: NormalizedSession,
+		targetProjectPath: string,
 	): Promise<WriteResult> {
-		// TODO: implement
-		// 1. Encode targetProjectPath to dir name (replace / with -)
-		// 2. Generate new sessionId (UUID)
-		// 3. Build JSONL lines with uuid/parentUuid chain
-		// 4. Write to ~/.claude/projects/<encoded>/<sessionId>.jsonl
-		throw new Error('Not implemented');
+		const sessionId = randomUUID();
+		const projectDir = join(SESSIONS_DIR, encodeProjectPath(targetProjectPath));
+		const filePath = join(projectDir, `${sessionId}.jsonl`);
+
+		mkdirSync(projectDir, {recursive: true});
+
+		const lines: string[] = [];
+		let previousUuid: string | null = null;
+
+		for (const msg of session.messages) {
+			const uuid = randomUUID();
+
+			lines.push(
+				JSON.stringify({
+					uuid,
+					parentUuid: previousUuid,
+					isSidechain: false,
+					userType: 'external',
+					cwd: targetProjectPath,
+					sessionId,
+					type: msg.role,
+					message: {
+						role: msg.role,
+						content: msg.content,
+					},
+					timestamp: msg.timestamp.toISOString(),
+				}),
+			);
+
+			previousUuid = uuid;
+		}
+
+		writeFileSync(filePath, lines.join('\n') + '\n', 'utf8');
+
+		return {
+			sessionId,
+			resumeCommand: `claude --resume ${sessionId}`,
+		};
 	},
 };

@@ -1,6 +1,7 @@
 import {existsSync, readdirSync, readFileSync, statSync} from 'node:fs';
 import {join, basename} from 'node:path';
 import {type Session, type SessionReader} from '../types.js';
+import {type NormalizedMessage} from '../../writers/types.js';
 import {resolvePath, AGENT_PATHS} from '../../platforms.js';
 
 const SESSIONS_DIR = resolvePath(AGENT_PATHS.codex.sessionsDir);
@@ -98,10 +99,9 @@ function parseSessionFile(filePath: string): Session | null {
 
 	if (!projectPath) return null;
 
-	const title = firstUserText
-		.replace(/\n+/g, ' ')
-		.trim()
-		.slice(0, 60) || basename(projectPath);
+	const title =
+		firstUserText.replace(/\n+/g, ' ').trim().slice(0, 60) ||
+		basename(projectPath);
 
 	const stat = statSync(filePath);
 
@@ -116,6 +116,44 @@ function parseSessionFile(filePath: string): Session | null {
 		createdAt: createdAt ?? new Date(stat.birthtimeMs),
 		sourcePath: filePath,
 	};
+}
+
+export function readMessages(session: Session): NormalizedMessage[] {
+	let raw: string;
+	try {
+		raw = readFileSync(session.sourcePath, 'utf8');
+	} catch {
+		return [];
+	}
+
+	const messages: NormalizedMessage[] = [];
+
+	for (const line of raw.trim().split('\n').filter(Boolean)) {
+		let entry: RawEntry;
+		try {
+			entry = JSON.parse(line) as RawEntry;
+		} catch {
+			continue;
+		}
+
+		if (entry.type !== 'response_item' || !entry.payload) continue;
+
+		const {role, content} = entry.payload;
+		if (!content || !Array.isArray(content)) continue;
+		if (role !== 'user' && role !== 'assistant') continue;
+
+		const text = extractText(content);
+		if (role === 'user' && isSystemMessage(text)) continue;
+		if (!text.trim()) continue;
+
+		messages.push({
+			role,
+			content: text,
+			timestamp: entry.timestamp ? new Date(entry.timestamp) : new Date(),
+		});
+	}
+
+	return messages;
 }
 
 export const codexReader: SessionReader = {

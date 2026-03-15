@@ -1,18 +1,23 @@
 import React, {useState, useEffect} from 'react';
 import {Box, Text, useInput, useApp, useStdout} from 'ink';
 import {type Agent} from '../lib/agents.js';
-import {readAllSessions, formatRelativeTime, type Session} from '../lib/sessions.js';
+import {
+	readAllSessions,
+	formatRelativeTime,
+	type Session,
+} from '../lib/sessions.js';
 import SessionActions from './SessionActions.js';
 
 type Props = {
 	agents: Agent[];
+	onExec: (command: string) => void;
 };
 
 type View = 'list' | 'actions';
 
 const OVERHEAD = 8;
 
-export default function Dashboard({agents}: Props) {
+export default function Dashboard({agents, onExec}: Props) {
 	const {exit} = useApp();
 	const {stdout} = useStdout();
 	const [sessions, setSessions] = useState<Session[]>([]);
@@ -62,11 +67,15 @@ export default function Dashboard({agents}: Props) {
 				session={activeSession}
 				agents={agents}
 				onBack={() => setView('list')}
+				onExec={onExec}
 			/>
 		);
 	}
 
-	const visibleSessions = sessions.slice(windowStart, windowStart + visibleCount);
+	const visibleSessions = sessions.slice(
+		windowStart,
+		windowStart + visibleCount,
+	);
 	const itemsAbove = windowStart;
 	const itemsBelow = sessions.length - (windowStart + visibleCount);
 
@@ -74,7 +83,9 @@ export default function Dashboard({agents}: Props) {
 		<Box flexDirection="column" gap={1}>
 			{/* Header */}
 			<Box gap={2}>
-				<Text color="cyan" bold>synctx</Text>
+				<Text color="cyan" bold>
+					synctx
+				</Text>
 				<Box gap={1}>
 					{agents.map(a => (
 						<Box key={a.name} gap={1}>
@@ -87,11 +98,11 @@ export default function Dashboard({agents}: Props) {
 
 			{/* Session list */}
 			<Box flexDirection="column">
-				<Text dimColor bold>Recent sessions</Text>
+				<Text dimColor bold>
+					Recent sessions
+				</Text>
 
-				{itemsAbove > 0 && (
-					<Text dimColor>  ↑ {itemsAbove} more</Text>
-				)}
+				{itemsAbove > 0 && <Text dimColor> ↑ {itemsAbove} more</Text>}
 
 				{sessions.length === 0 ? (
 					<Text dimColor>No sessions found</Text>
@@ -121,9 +132,7 @@ export default function Dashboard({agents}: Props) {
 					})
 				)}
 
-				{itemsBelow > 0 && (
-					<Text dimColor>  ↓ {itemsBelow} more</Text>
-				)}
+				{itemsBelow > 0 && <Text dimColor> ↓ {itemsBelow} more</Text>}
 			</Box>
 
 			{/* Footer */}

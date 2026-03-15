@@ -6,7 +6,11 @@ import Dashboard from './components/Dashboard.js';
 
 type Screen = 'init' | 'dashboard';
 
-export default function App() {
+type Props = {
+	onExec: (command: string) => void;
+};
+
+export default function App({onExec}: Props) {
 	const firstRun = isFirstRun();
 	const [screen, setScreen] = useState<Screen>(firstRun ? 'init' : 'dashboard');
 	const [agents, setAgents] = useState<Agent[]>(() =>
@@ -24,5 +28,5 @@ export default function App() {
 		);
 	}
 
-	return <Dashboard agents={agents} />;
+	return <Dashboard agents={agents} onExec={onExec} />;
 }

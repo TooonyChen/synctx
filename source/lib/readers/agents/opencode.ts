@@ -1,6 +1,7 @@
 import {existsSync} from 'node:fs';
 import {Database} from 'bun:sqlite';
 import {type Session, type SessionReader} from '../types.js';
+import {type NormalizedMessage} from '../../writers/types.js';
 import {resolvePath, AGENT_PATHS} from '../../platforms.js';
 
 const DB_PATH = resolvePath(AGENT_PATHS.opencode.dbPath);
@@ -13,6 +14,62 @@ type SessionRow = {
 	time_updated: number;
 	message_count: number;
 };
+
+type MessageRow = {
+	role_data: string;
+	part_data: string;
+	time_created: number;
+};
+
+export function readMessages(session: Session): NormalizedMessage[] {
+	if (!existsSync(DB_PATH)) return [];
+
+	let db: Database;
+	try {
+		db = new Database(DB_PATH, {readonly: true});
+	} catch {
+		return [];
+	}
+
+	try {
+		const rows = db
+			.prepare(
+				`SELECT m.data AS role_data, p.data AS part_data, m.time_created
+				 FROM message m
+				 JOIN part p ON p.message_id = m.id
+				 WHERE m.session_id = ?
+				 ORDER BY m.time_created`,
+			)
+			.all(session.sessionId) as MessageRow[];
+
+		const messages: NormalizedMessage[] = [];
+
+		for (const row of rows) {
+			let msgData: {role?: string};
+			let partData: {text?: string};
+			try {
+				msgData = JSON.parse(row.role_data) as {role?: string};
+				partData = JSON.parse(row.part_data) as {text?: string};
+			} catch {
+				continue;
+			}
+
+			const role = msgData.role;
+			if (role !== 'user' && role !== 'assistant') continue;
+			if (!partData.text?.trim()) continue;
+
+			messages.push({
+				role,
+				content: partData.text,
+				timestamp: new Date(row.time_created),
+			});
+		}
+
+		return messages;
+	} finally {
+		db.close();
+	}
+}
 
 export const opencodeReader: SessionReader = {
 	agentName: 'OpenCode',

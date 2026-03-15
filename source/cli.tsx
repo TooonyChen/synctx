@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import React from 'react';
 import {render} from 'ink';
+import {execSync} from 'node:child_process';
 import meow from 'meow';
 import App from './app.js';
 
@@ -21,4 +22,19 @@ meow(
 	},
 );
 
-render(<App />);
+let execCmd = '';
+
+const {waitUntilExit, unmount} = render(
+	<App
+		onExec={cmd => {
+			execCmd = cmd;
+			unmount();
+		}}
+	/>,
+);
+
+await waitUntilExit();
+
+if (execCmd) {
+	execSync(execCmd, {stdio: 'inherit'});
+}
