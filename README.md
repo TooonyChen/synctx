@@ -1,6 +1,6 @@
 # <p align="center">Synctx</p>
 
-### <p align="center"><b>Sync your context between agents</b></p>
+### <p align="center"><b>Sync Context: sync your context between agents</b></p>
 
 ---
 
