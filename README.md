@@ -20,31 +20,43 @@ The current implementation is focused on local session interoperability between:
 - Codex
 - OpenCode
 
-## Requirements
+## Install
 
-- **macOS** (currently the only supported platform)
-- `bun` installed locally
-- one or more supported agent CLIs installed and available on `PATH`
-  - `claude`
-  - `codex`
-  - `opencode`
-- access to the agents' local session data
+### npm (requires [Bun](https://bun.sh) runtime)
 
-`synctx` uses `bun:sqlite`, so Bun is required at runtime even though the package metadata still looks like a regular Node CLI package.
+```bash
+bun install -g @synctx/synctx
+synctx
+```
 
-## Run Locally
+### Standalone binary (no dependencies)
+
+Download from [GitHub Releases](https://github.com/TooonyChen/synctx/releases):
+
+```bash
+# Apple Silicon
+curl -fsSL https://github.com/TooonyChen/synctx/releases/latest/download/synctx-macos-arm64.tar.gz | tar xz
+# Intel Mac
+curl -fsSL https://github.com/TooonyChen/synctx/releases/latest/download/synctx-macos-x64.tar.gz | tar xz
+
+sudo mv synctx-macos-* /usr/local/bin/synctx
+```
+
+### Build from source
 
 ```bash
 bun install
 bun run build
-bun run dist/cli.js 
+bun run dist/cli.js
 ```
 
-For development:
+### Requirements
 
-```bash
-bun run source/cli.tsx
-```
+- **macOS** (currently the only supported platform)
+- one or more supported agent CLIs installed and available on `PATH`
+  - `claude`
+  - `codex`
+  - `opencode`
 
 ## How It Works
 

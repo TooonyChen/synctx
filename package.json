@@ -1,6 +1,6 @@
 {
-	"name": "synctx",
-	"version": "0.0.0",
+	"name": "@synctx/synctx",
+	"version": "0.0.4",
 	"license": "MIT",
 	"bin": "dist/cli.js",
 	"type": "module",
