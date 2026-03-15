@@ -90,6 +90,6 @@ The current readers use these native stores:
 
 ## TODO
 
-[ ] copy to clipboard
-[ ] MCP server to r/w context (well... do we really neet that?)
-[ ] more coding agents supports
+- [ ] copy to clipboard
+- [ ] MCP server to r/w context (well... do we really neet that?)
+- [ ] more coding agents supports
