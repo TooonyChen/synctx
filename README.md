@@ -91,5 +91,6 @@ The current readers use these native stores:
 ## TODO
 
 - [ ] copy to clipboard
+- [ ] choose only parts of the context to share, not all
 - [ ] MCP server to r/w context (well... do we really neet that?)
 - [ ] more coding agents supports
