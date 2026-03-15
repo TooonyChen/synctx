@@ -6,6 +6,11 @@ import {resolvePath, AGENT_PATHS} from '../../platforms.js';
 
 const SESSIONS_DIR = resolvePath(AGENT_PATHS.claudeCode.sessionsDir);
 
+type ClaudeTextBlock = {
+	type: 'text';
+	text: string;
+};
+
 // "/Users/okcomputer/codebase/synctx" → "-Users-okcomputer-codebase-synctx"
 function encodeProjectPath(projectPath: string): string {
 	return projectPath.replace(/\//g, '-');
@@ -29,6 +34,10 @@ export const claudeCodeWriter: SessionWriter = {
 
 		for (const msg of session.messages) {
 			const uuid = randomUUID();
+			const content =
+				msg.role === 'assistant'
+					? ([{type: 'text', text: msg.content}] satisfies ClaudeTextBlock[])
+					: msg.content;
 
 			lines.push(
 				JSON.stringify({
@@ -41,7 +50,7 @@ export const claudeCodeWriter: SessionWriter = {
 					type: msg.role,
 					message: {
 						role: msg.role,
-						content: msg.content,
+						content,
 					},
 					timestamp: msg.timestamp.toISOString(),
 				}),
