@@ -9,7 +9,7 @@ export function getResumeCommand(agentName: string, sessionId: string): string {
 		}
 
 		case 'OpenCode': {
-			return 'opencode';
+			return `opencode -s ${sessionId}`;
 		}
 
 		default: {

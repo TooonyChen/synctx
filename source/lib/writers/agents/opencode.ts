@@ -12,6 +12,47 @@ import {resolvePath, AGENT_PATHS} from '../../platforms.js';
 
 const DB_PATH = resolvePath(AGENT_PATHS.opencode.dbPath);
 
+type UserMessageDefaults = {
+	agent: string;
+	model: {
+		providerID: string;
+		modelID: string;
+	};
+	variant?: string;
+};
+
+type AssistantMessageDefaults = {
+	agent: string;
+	mode: string;
+	providerID: string;
+	modelID: string;
+	path: {
+		cwd: string;
+		root: string;
+	};
+};
+
+type SessionDefaults = {
+	version: string;
+	slug: string;
+	user: UserMessageDefaults;
+	assistant: AssistantMessageDefaults;
+};
+
+type UserMessageSeed = {
+	agent?: string;
+	model?: {providerID?: string; modelID?: string};
+	variant?: string;
+};
+
+type AssistantMessageSeed = {
+	agent?: string;
+	mode?: string;
+	providerID?: string;
+	modelID?: string;
+	path?: {cwd?: string; root?: string};
+};
+
 /**
  * Generate an OpenCode-style ID: <prefix><hex(timestamp)><random>
  */
@@ -43,6 +84,139 @@ function getProjectId(projectPath: string): string {
 	}
 }
 
+function summarizeUserMessage(content: string): string {
+	return content.replace(/\n+/g, ' ').trim().slice(0, 60);
+}
+
+function loadSessionDefaults(db: Database, targetProjectPath: string): SessionDefaults {
+	const base: SessionDefaults = {
+		version: '0.0.0',
+		slug: '',
+		user: {
+			agent: 'build',
+			model: {
+				providerID: 'openai',
+				modelID: 'gpt-5.2',
+			},
+		},
+		assistant: {
+			agent: 'build',
+			mode: 'build',
+			providerID: 'openai',
+			modelID: 'gpt-5.2',
+			path: {
+				cwd: targetProjectPath,
+				root: targetProjectPath,
+			},
+		},
+	};
+
+	const sessionRow = db
+		.prepare(
+			`SELECT id, slug, version
+			 FROM session
+			 WHERE directory = ? AND time_archived IS NULL
+			 ORDER BY time_updated DESC
+			 LIMIT 1`,
+		)
+		.get(targetProjectPath) as
+		| {
+				id: string;
+				slug: string;
+				version: string;
+		  }
+		| undefined;
+
+	const fallbackSessionRow =
+		sessionRow ??
+		(db
+			.prepare(
+				`SELECT id, slug, version
+				 FROM session
+				 WHERE time_archived IS NULL
+				 ORDER BY time_updated DESC
+				 LIMIT 1`,
+			)
+			.get() as
+			| {
+					id: string;
+					slug: string;
+					version: string;
+			  }
+			| undefined);
+
+	if (!fallbackSessionRow) return base;
+
+	const messageRows = db
+		.prepare(
+			`SELECT data
+			 FROM message
+			 WHERE session_id = ?
+			 ORDER BY time_created DESC`,
+		)
+		.all(fallbackSessionRow.id) as Array<{data: string}>;
+
+	let lastUser: UserMessageSeed | undefined;
+	let lastAssistant: AssistantMessageSeed | undefined;
+
+	for (const row of messageRows) {
+		let data: {role?: string} & Record<string, unknown>;
+		try {
+			data = JSON.parse(row.data) as {role?: string} & Record<string, unknown>;
+		} catch {
+			continue;
+		}
+
+		if (!lastUser && data.role === 'user') {
+			lastUser = data as UserMessageSeed;
+		}
+
+		if (!lastAssistant && data.role === 'assistant') {
+			lastAssistant = data as AssistantMessageSeed;
+		}
+
+		if (lastUser && lastAssistant) break;
+	}
+
+	return {
+		version: fallbackSessionRow.version || base.version,
+		slug: fallbackSessionRow.slug || base.slug,
+		user: {
+			agent: lastUser?.agent || lastAssistant?.agent || base.user.agent,
+			model: {
+				providerID:
+					lastUser?.model?.providerID ||
+					lastAssistant?.providerID ||
+					base.user.model.providerID,
+				modelID:
+					lastUser?.model?.modelID ||
+					lastAssistant?.modelID ||
+					base.user.model.modelID,
+			},
+			variant: lastUser?.variant || undefined,
+		},
+		assistant: {
+			agent: lastAssistant?.agent || lastUser?.agent || base.assistant.agent,
+			mode: lastAssistant?.mode || lastUser?.agent || base.assistant.mode,
+			providerID:
+				lastAssistant?.providerID ||
+				lastUser?.model?.providerID ||
+				base.assistant.providerID,
+			modelID:
+				lastAssistant?.modelID ||
+				lastUser?.model?.modelID ||
+				base.assistant.modelID,
+			path: {
+				cwd: targetProjectPath,
+				root:
+					lastAssistant?.path?.root ||
+					lastAssistant?.path?.cwd ||
+					targetProjectPath,
+			},
+		},
+	};
+}
+
 export const opencodeWriter: SessionWriter = {
 	agentName: 'OpenCode',
 
@@ -62,11 +236,12 @@ export const opencodeWriter: SessionWriter = {
 			const projectId = getProjectId(targetProjectPath);
 			const projectName = basename(targetProjectPath);
 			const now = Date.now();
+			const defaults = loadSessionDefaults(db, targetProjectPath);
 
 			// Derive title from first user message
 			const firstUserMsg = session.messages.find(m => m.role === 'user');
 			const title = firstUserMsg
-				? firstUserMsg.content.replace(/\n+/g, ' ').trim().slice(0, 60)
+				? summarizeUserMessage(firstUserMsg.content)
 				: projectName;
 
 			const transaction = db.transaction(() => {
@@ -79,23 +254,60 @@ export const opencodeWriter: SessionWriter = {
 				// 2. Create session
 				db.prepare(
 					`INSERT INTO session (id, project_id, slug, directory, title, version, time_created, time_updated, time_archived)
-					 VALUES (?, ?, '', ?, ?, '0.0.0', ?, ?, NULL)`,
-				).run(sessionId, projectId, targetProjectPath, title, now, now);
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+				).run(
+					sessionId,
+					projectId,
+					defaults.slug,
+					targetProjectPath,
+					title,
+					defaults.version,
+					now,
+					now,
+				);
 
 				// 3. Insert messages and parts
 				let previousMsgId: string | null = null;
+				let lastUserMsgId: string | null = null;
 
 				for (const msg of session.messages) {
 					const msgId = generateId('msg_');
 					const partId = generateId('prt_');
 					const msgTime = msg.timestamp.getTime();
 
-					const msgData = JSON.stringify({
-						role: msg.role,
-						time: {created: msgTime},
-						parentID: msg.role === 'assistant' ? previousMsgId : null,
-						tokens: {input: 0, output: 0, cache: {read: 0, write: 0}},
-					});
+					const msgData =
+						msg.role === 'user'
+							? JSON.stringify({
+									role: 'user',
+									time: {created: msgTime},
+									summary: {
+										title: summarizeUserMessage(msg.content),
+										diffs: [],
+									},
+									agent: defaults.user.agent,
+									model: defaults.user.model,
+									...(defaults.user.variant
+										? {variant: defaults.user.variant}
+										: {}),
+							  })
+							: JSON.stringify({
+									role: 'assistant',
+									time: {created: msgTime, completed: msgTime},
+									parentID: lastUserMsgId ?? previousMsgId ?? msgId,
+									modelID: defaults.assistant.modelID,
+									providerID: defaults.assistant.providerID,
+									mode: defaults.assistant.mode,
+									agent: defaults.assistant.agent,
+									path: defaults.assistant.path,
+									cost: 0,
+									tokens: {
+										input: 0,
+										output: 0,
+										reasoning: 0,
+										cache: {read: 0, write: 0},
+									},
+									finish: 'stop',
+							  });
 
 					db.prepare(
 						`INSERT INTO message (id, session_id, time_created, time_updated, data)
@@ -113,6 +325,10 @@ export const opencodeWriter: SessionWriter = {
 						 VALUES (?, ?, ?, ?, ?, ?)`,
 					).run(partId, msgId, sessionId, msgTime, msgTime, partData);
 
+					if (msg.role === 'user') {
+						lastUserMsgId = msgId;
+					}
+
 					previousMsgId = msgId;
 				}
 			});
@@ -121,7 +337,7 @@ export const opencodeWriter: SessionWriter = {
 
 			return {
 				sessionId,
-				resumeCommand: 'opencode',
+				resumeCommand: `opencode -s ${sessionId}`,
 			};
 		} finally {
 			db.close();
