@@ -13,6 +13,14 @@ synctx            # run the CLI (linked globally via npm link)
 
 Use **bun** as the package manager, not npm.
 
+## Dev Docs
+
+Before implementing features related to a specific agent's session format, read the corresponding doc in `docs/`:
+
+- `docs/claudeCode.md` — Claude Code session format & JSONL structure
+- `docs/codex.md` — Codex session format
+- `docs/opencode.md` — OpenCode session format
+
 ## Architecture
 
 synctx is an Ink (React + CLI) app that **syncs conversation sessions across all installed AI coding agents** (Claude Code, Codex, Gemini CLI, OpenCode). It reads session files directly from disk and writes/injects them into other agents — zero token cost — so you can resume a conversation started in one agent seamlessly in another.
