@@ -88,7 +88,8 @@ The current readers use these native stores:
 - Codex: `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`
 - OpenCode: `~/.local/share/opencode/opencode.db` (SQLite)
 
-## Limitations
+## TODO
 
-- The help text still mentions a `watch` command, but the current CLI flow is the interactive dashboard only.
-- Clipboard copy uses `pbcopy` (macOS only).
+[ ] copy to clipboard
+[ ] MCP server to r/w context (well... do we really neet that?)
+[ ] more coding agents supports
